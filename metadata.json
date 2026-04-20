@@ -1,0 +1,7 @@
+{
+  "name": "1335",
+  "description": "Un'applicazione professionale per la gestione di Portfolio clienti (CF/IVA), Punti Di Prelievo (PDP), Contratti e Documenti correlati.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
