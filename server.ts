@@ -37,6 +37,11 @@ async function startServer() {
       };
       messages.push(newMessage);
       io.emit("new_message", newMessage);
+
+      if (msg.asEmail) {
+        console.log(`[EMAIL NOTIFICATION] Sending email for message ${newMessage.id} to target ${msg.targetId}`);
+        // Qui andrebbe la logica di invio email reale (es. nodemailer)
+      }
     });
 
     socket.on("mark_as_read", (id) => {

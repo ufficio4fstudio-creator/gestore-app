@@ -1,6 +1,19 @@
 
 export type UserRole = 'admin' | 'backoffice' | 'utente';
 
+export interface NotificationSettings {
+  email: {
+    contractStatusChange: boolean;
+    caseStatusChange: boolean;
+    newMessages: boolean;
+    mentions: boolean;
+  };
+  googleChat: {
+    enabled: boolean;
+    webhookUrl?: string;
+  };
+}
+
 export interface User {
   id: string;
   username: string;
@@ -8,6 +21,10 @@ export interface User {
   name: string;
   role: UserRole;
   userCode: string; // Codice Agente/Operatore
+  email: string;
+  phone?: string;
+  avatar?: string;
+  notificationSettings?: NotificationSettings;
 }
 
 export interface Attachment {
@@ -33,11 +50,15 @@ export interface Portfolio extends Timestamps {
   cap: string;
   city: string;
   province: string;
-  phone: string;
-  email: string;
+  phone?: string;
+  email?: string;
+  pec?: string;
+  legalRepresentativeName?: string;
+  legalRepresentativeTaxId?: string;
   businessName: string;
   entityType: PortfolioEntityType;
   assignedTo: string; // User ID
+  updatedBy?: string; // User ID or Name
   attachments: Attachment[];
 }
 
@@ -63,7 +84,7 @@ export interface PDP extends Timestamps {
 
 export type ContractStatus = 'bozza' | 'da firmare' | 'trasmesso' | 'attivo' | 'non conforme' | 'KO';
 export type Fornitore = 'A2A1' | 'A2A2' | 'AXPO' | 'AXP2' | 'DOLO' | 'DUFE' | 'OPEN' | 'SORG';
-export type ContractType = 'SWITCH' | 'ATTIVAZIONE' | 'VOLT TIT III' | 'VOLT TIT IV' | 'ALLACCIO';
+export type ContractType = 'SWITCH' | 'ATTIVAZIONE' | 'VOLT TIT III' | 'VOLT TIT IV' | 'ALLACCIO' | 'RINNOVO';
 
 export interface Contract extends Timestamps {
   id: string;
@@ -104,19 +125,19 @@ export interface Caso extends Timestamps {
   assignedTo: string;
 }
 
-export type ScoringStatus = 'richiesto' | 'inserito' | 'OK' | 'SDD' | 'KO' | 'cauzione' | 'da affidare' | 'non affidabile' | '';
+export type CreditCheckStatus = 'richiesto' | 'inserito' | 'OK' | 'SDD' | 'KO' | 'cauzione' | 'da affidare' | 'non affidabile' | '';
 
-export interface ScoringRequest extends Timestamps {
+export interface CreditCheckRequest extends Timestamps {
   id: string;
   portfolioId: string;
   powerVolume: number;
   methaneVolume: number;
   suppliers: {
-    A2A1?: ScoringStatus;
-    AXPO?: ScoringStatus;
-    DOLO?: ScoringStatus;
-    SORG?: ScoringStatus;
-    OPEN?: ScoringStatus;
+    A2A1?: CreditCheckStatus;
+    AXPO?: CreditCheckStatus;
+    DOLO?: CreditCheckStatus;
+    SORG?: CreditCheckStatus;
+    OPEN?: CreditCheckStatus;
   };
   assignedTo: string; // User ID
 }
@@ -134,4 +155,26 @@ export interface Message {
   attachments?: Attachment[];
 }
 
-export type AppView = 'portfolio' | 'pdp' | 'contracts' | 'dashboard' | 'cabine' | 'casi' | 'users' | 'statistics' | 'map' | 'bulk-upload' | 'scoring';
+export interface News extends Timestamps {
+  id: string;
+  title: string;
+  occhiello: string;
+  content: string;
+  attachments: Attachment[];
+  isActive: boolean;
+}
+
+export type AssociazioneStatus = 'nuovo' | 'incassato' | 'registrato' | 'pagato';
+
+export interface Associazione extends Timestamps {
+  id: string;
+  portfolioId: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  quota: number;
+  assignedTo: string;
+  status: AssociazioneStatus;
+  isRenewal: boolean;
+}
+
+export type AppView = 'portfolio' | 'pdp' | 'contracts' | 'dashboard' | 'cabine' | 'casi' | 'users' | 'statistics' | 'map' | 'bulk-upload' | 'credit-check' | 'profile' | 'news-admin' | 'tpm-ranking' | 'associazioni' | 'rinnovi';
