@@ -6,7 +6,7 @@ import {
   TrendingUp, Files, ShieldAlert, Activity, LogOut, Lock, User as UserIcon,
   ChevronDown, X, Download, HardDrive, AlertCircle, FileSpreadsheet, Paperclip,
   Edit2, Trash2, Info, Clock, Check, ExternalLink, Hash, BarChart3, Upload, Menu, Flame, MessageSquare, Send, Bell, BellOff,
-  Wallet, FileSignature, Newspaper, Lightbulb
+  Wallet, FileSignature, Newspaper, Lightbulb, Eye
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import { 
@@ -205,6 +205,44 @@ const AddressLink: React.FC<{ address: string; label?: string; className?: strin
   </a>
 );
 
+interface ConfirmModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6 animate-in zoom-in-95 duration-200">
+        <div className="text-center space-y-2">
+          <h3 className="text-xl font-black text-slate-900">{title}</h3>
+          <p className="text-sm font-medium text-slate-500">{message}</p>
+        </div>
+        <div className="flex gap-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-3.5 px-6 rounded-2xl border-2 border-slate-100 font-bold text-slate-500 hover:bg-slate-50 transition-all text-xs outline-none"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 py-3.5 px-6 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-black shadow-lg hover:shadow-red-200 transition-all text-xs outline-none"
+          >
+            Conferma
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('charlie_current_user');
@@ -226,6 +264,7 @@ const App: React.FC = () => {
   const [news, setNews] = useState<News[]>(() => loadData('news', []));
   const [associazioni, setAssociazioni] = useState<Associazione[]>(() => loadData('associazioni', []));
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
+  const [selectedPdpDetail, setSelectedPdpDetail] = useState<PDP | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeChat, setActiveChat] = useState<{ id: string; type: 'contract' | 'case' } | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -600,10 +639,10 @@ const AssociazioneView: React.FC<any> = ({ data, setData, portfolios, user, expo
     setData((prev: Associazione[]) => prev.map(a => a.id === id ? { ...a, status: newStatus, updatedAt: new Date().toISOString() } : a));
   };
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   const deleteAssoc = (id: string) => {
-    if (confirm('Sei sicuro di voler eliminare questa associazione?')) {
-      setData((prev: Associazione[]) => prev.filter(a => a.id !== id));
-    }
+    setDeleteConfirmId(id);
   };
 
   const filteredAssoc = useMemo(() => {
@@ -641,7 +680,7 @@ const AssociazioneView: React.FC<any> = ({ data, setData, portfolios, user, expo
       </header>
 
       {isAdding && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <form onSubmit={handleSave} className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-8 bg-emerald-900 text-white relative">
               <button type="button" onClick={() => setIsAdding(false)} className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -732,14 +771,14 @@ const AssociazioneView: React.FC<any> = ({ data, setData, portfolios, user, expo
                 return (
                   <tr key={assoc.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="p-4">
-                      <p className="font-bold text-slate-700 text-sm">{portfolio?.businessName || 'N/A'}</p>
+                      <p className="font-bold text-slate-700 text-xs">{portfolio?.businessName || 'N/A'}</p>
                       <p className="text-[9px] font-black text-slate-400 uppercase">{portfolio?.taxId}</p>
                     </td>
                     <td className="p-4">
-                      <p className="text-xs font-bold text-slate-600">{formatDate(assoc.startDate)}</p>
+                      <p className="text-[11px] font-bold text-slate-600">{formatDate(assoc.startDate)}</p>
                     </td>
                     <td className="p-4">
-                      <p className="text-xs font-black text-emerald-700">€ {assoc.quota.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
+                      <p className="text-[10px] font-black text-emerald-700">€ {assoc.quota.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
                     </td>
                     <td className="p-4">
                       <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${assoc.isRenewal ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
@@ -787,11 +826,21 @@ const AssociazioneView: React.FC<any> = ({ data, setData, portfolios, user, expo
           </table>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="Conferma Eliminazione"
+        message="Sei sicuro di voler eliminare questa quota associativa? Questa operazione non può essere annullata."
+        onConfirm={() => {
+          setData((prev: Associazione[]) => prev.filter(a => a.id !== deleteConfirmId));
+          setDeleteConfirmId(null);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };
 
-const RinnoviView: React.FC<any> = ({ contracts, portfolios, pdps, exportFn }) => {
+const RinnoviView: React.FC<any> = ({ contracts, portfolios, pdps, exportFn, onViewPdp }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const expiringContracts = useMemo(() => {
@@ -865,8 +914,8 @@ const RinnoviView: React.FC<any> = ({ contracts, portfolios, pdps, exportFn }) =
                       <p className="text-[10px] font-black text-slate-400 uppercase">{portfolio?.taxId}</p>
                     </td>
                     <td className="p-6">
-                      <p className="font-bold text-slate-600">{pdp?.pdpCode || 'N/A'}</p>
-                      <p className="text-[10px] font-medium text-slate-400">{pdp?.address}</p>
+                      <p onClick={() => pdp && onViewPdp && onViewPdp(pdp)} className="font-bold text-emerald-600 font-mono bg-emerald-50 px-2 py-0.5 rounded cursor-pointer hover:bg-emerald-100 transition-colors inline-block">{pdp?.pdpCode || 'N/A'}</p>
+                      <p className="text-[10px] font-medium text-slate-400 mt-1">{pdp?.address}</p>
                     </td>
                     <td className="p-6">
                       <div className="flex items-center gap-2">
@@ -912,13 +961,13 @@ const renderContent = () => {
     switch (view) {
       case 'dashboard': return <Dashboard stats={filteredData} setView={setView} user={currentUser} news={news} onOpenNews={setSelectedNews} />;
       case 'portfolio': return <PortfolioView data={filteredData.portfolios} users={users} setData={setPortfolios} user={currentUser} exportFn={exportToExcel} setCreditChecks={setCreditChecks} onCreateContract={(id: string) => { setPrefilledPortfolioId(id); setView('contracts'); }} />;
-      case 'pdp': return <PDPView data={filteredData.pdps} setData={setPdps} cabine={cabine} setCabine={setCabine} contracts={contracts} portfolios={portfolios} users={users} user={currentUser} exportFn={exportToExcel} />;
-      case 'contracts': return <ContractView data={filteredData.contracts} setData={setContracts} portfolios={portfolios} setPortfolios={setPortfolios} pdps={pdps} cabine={cabine} setCabine={setCabine} setPdps={setPdps} users={users} user={currentUser} exportFn={exportToExcel} onOpenChat={(id: string) => { setActiveChat({ id, type: 'contract' }); markChatAsRead(id); }} getUnreadCount={getUnreadCount} prefilledPortfolioId={prefilledPortfolioId} onClearPrefill={() => setPrefilledPortfolioId(null)} />;
-      case 'casi': return <CasiView data={filteredData.casi} setData={setCasi} portfolios={portfolios} pdps={pdps} user={currentUser} exportFn={exportToExcel} onOpenChat={(id: string) => { setActiveChat({ id, type: 'case' }); markChatAsRead(id); }} getUnreadCount={getUnreadCount} />;
+      case 'pdp': return <PDPView data={filteredData.pdps} setData={setPdps} cabine={cabine} setCabine={setCabine} contracts={contracts} portfolios={portfolios} users={users} user={currentUser} exportFn={exportToExcel} casi={filteredData.casi} onViewPdp={setSelectedPdpDetail} />;
+      case 'contracts': return <ContractView data={filteredData.contracts} setData={setContracts} portfolios={portfolios} setPortfolios={setPortfolios} pdps={pdps} cabine={cabine} setCabine={setCabine} setPdps={setPdps} users={users} user={currentUser} exportFn={exportToExcel} onOpenChat={(id: string) => { setActiveChat({ id, type: 'contract' }); markChatAsRead(id); }} getUnreadCount={getUnreadCount} prefilledPortfolioId={prefilledPortfolioId} onClearPrefill={() => setPrefilledPortfolioId(null)} onViewPdp={setSelectedPdpDetail} />;
+      case 'casi': return <CasiView data={filteredData.casi} setData={setCasi} portfolios={portfolios} pdps={pdps} user={currentUser} exportFn={exportToExcel} onOpenChat={(id: string) => { setActiveChat({ id, type: 'case' }); markChatAsRead(id); }} getUnreadCount={getUnreadCount} onViewPdp={setSelectedPdpDetail} />;
       case 'associazioni': return <AssociazioneView data={filteredData.associazioni} setData={setAssociazioni} portfolios={portfolios} user={currentUser} exportFn={exportToExcel} />;
       case 'credit-check': return <CreditCheckView data={filteredData.creditChecks} setData={setCreditChecks} portfolios={portfolios} users={users} user={currentUser} exportFn={exportToExcel} />;
-      case 'rinnovi': return <RinnoviView contracts={filteredData.contracts} portfolios={portfolios} pdps={pdps} exportFn={exportToExcel} />;
-      case 'map': return <MapView pdps={filteredData.pdps} portfolios={portfolios} contracts={contracts} />;
+      case 'rinnovi': return <RinnoviView contracts={filteredData.contracts} portfolios={portfolios} pdps={pdps} exportFn={exportToExcel} onViewPdp={setSelectedPdpDetail} />;
+      case 'map': return <MapView pdps={filteredData.pdps} portfolios={portfolios} contracts={contracts} onViewPdp={setSelectedPdpDetail} />;
       case 'statistics': return <StatisticsView contracts={filteredData.contracts} />;
       case 'bulk-upload': return <BulkUploadView setPortfolios={setPortfolios} setPdps={setPdps} setContracts={setContracts} setCabine={setCabine} setCasi={setCasi} setCreditChecks={setCreditChecks} />;
       case 'cabine': return <CabineView data={cabine} pdps={pdps} contracts={contracts} exportFn={exportToExcel} />;
@@ -1162,6 +1211,17 @@ const renderContent = () => {
       {selectedNews && (
         <NewsDetailModal news={selectedNews} onClose={() => setSelectedNews(null)} />
       )}
+      {selectedPdpDetail && (
+        <PDPDetailModal
+          isOpen={!!selectedPdpDetail}
+          onClose={() => setSelectedPdpDetail(null)}
+          pdp={selectedPdpDetail}
+          contracts={contracts}
+          portfolios={portfolios}
+          casi={casi}
+          cabine={cabine}
+        />
+      )}
     </div>
   );
 };
@@ -1389,7 +1449,7 @@ const ChatModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col h-[600px] animate-in zoom-in duration-300">
         <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
           <div>
@@ -1607,7 +1667,7 @@ const NewsBanner: React.FC<{ news: News[]; onOpenDetail: (n: News) => void }> = 
 
 const NewsDetailModal: React.FC<{ news: News; onClose: () => void }> = ({ news, onClose }) => {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
         <div className="p-8 bg-emerald-900 text-white relative">
           <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -1689,10 +1749,10 @@ const NewsAdminView: React.FC<{ news: News[]; setNews: React.Dispatch<React.SetS
     setForm({ title: '', occhiello: '', content: '', attachments: [], isActive: true });
   };
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   const deleteNews = (id: string) => {
-    if (window.confirm('Sei sicuro di voler eliminare questa notizia?')) {
-      setNews(prev => prev.filter(n => n.id !== id));
-    }
+    setDeleteConfirmId(id);
   };
 
   return (
@@ -1769,6 +1829,16 @@ const NewsAdminView: React.FC<{ news: News[]; setNews: React.Dispatch<React.SetS
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="Conferma Eliminazione"
+        message="Sei sicuro di voler eliminare questa notizia? Questa operazione non può essere annullata."
+        onConfirm={() => {
+          setNews(prev => prev.filter(n => n.id !== deleteConfirmId));
+          setDeleteConfirmId(null);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };
@@ -2018,6 +2088,8 @@ const PortfolioView: React.FC<any> = ({ data, setData, user, users, exportFn, se
   const [form, setForm] = useState<Partial<Portfolio>>({ attachments: [], entityType: 'Domestico' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creditCheckPortfolio, setCreditCheckPortfolio] = useState<Portfolio | null>(null);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const ENTITY_TYPES: PortfolioEntityType[] = ['Domestico', 'Impresa', 'Associazione', 'Condominio', 'PA'];
@@ -2157,7 +2229,7 @@ const PortfolioView: React.FC<any> = ({ data, setData, user, users, exportFn, se
               <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
                 <td className="p-6">
                   <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter mb-1">{p.entityType || '---'}</p>
-                  <p className="font-bold">{p.businessName}</p>
+                  <p onClick={() => setSelectedPortfolio(p)} className="font-bold text-emerald-950 hover:text-emerald-600 cursor-pointer transition-colors hover:underline decoration-dotted">{p.businessName}</p>
                   <p className="text-[10px] text-slate-400 font-mono">{p.taxId}</p>
                   {p.updatedBy && (
                     <p className="text-[8px] text-slate-300 uppercase font-black mt-1 flex items-center gap-1">
@@ -2179,7 +2251,7 @@ const PortfolioView: React.FC<any> = ({ data, setData, user, users, exportFn, se
                        <FileSignature size={18} />
                      </button>
                     <button onClick={() => { setForm(p); setEditingId(p.id); setIsFormOpen(true); }} className="text-slate-400 hover:text-emerald-600 p-2"><Edit2 size={16}/></button>
-                    <button onClick={() => setData(data.filter((i: any) => i.id !== p.id))} className="text-slate-400 hover:text-red-600 p-2"><X size={18}/></button>
+                    <button onClick={() => setDeleteConfirmId(p.id)} className="text-slate-400 hover:text-red-600 p-2"><X size={18}/></button>
                   </div>
                 </td>
               </tr>
@@ -2199,14 +2271,37 @@ const PortfolioView: React.FC<any> = ({ data, setData, user, users, exportFn, se
           }} 
         />
       )}
+
+      {selectedPortfolio && (
+        <PortfolioModal 
+          isOpen={!!selectedPortfolio} 
+          onClose={() => setSelectedPortfolio(null)} 
+          portfolio={selectedPortfolio} 
+          setData={setData}
+          user={user}
+          users={users}
+        />
+      )}
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="Conferma Eliminazione"
+        message="Sei sicuro di voler eliminare questa anagrafica cliente? Questa operazione eliminerà anche tutti i record ad essa collegati."
+        onConfirm={() => {
+          setData((prev: Portfolio[]) => prev.filter(i => i.id !== deleteConfirmId));
+          setDeleteConfirmId(null);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };
 
-const PDPView: React.FC<any> = ({ data, setData, cabine, setCabine, contracts, portfolios, users, user, exportFn }) => {
+const PDPView: React.FC<any> = ({ data, setData, cabine, setCabine, contracts, portfolios, users, user, exportFn, casi = [], onViewPdp }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<Partial<PDP>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleAddressSync = (val: string) => {
     const s = splitAddress(val);
@@ -2214,13 +2309,43 @@ const PDPView: React.FC<any> = ({ data, setData, cabine, setCabine, contracts, p
     else setForm(prev => ({ ...prev, address: val }));
   };
 
+  const filteredPdps = useMemo(() => {
+    return data.filter((p: PDP) => {
+      // Find associated clients for this PDP based on contracts
+      const associatedContracts = contracts.filter((c: any) => c.pdpId === p.id);
+      const clientNames = associatedContracts
+        .map((c: any) => {
+          const pf = portfolios.find((portfolio: any) => portfolio.id === c.portfolioId);
+          return pf ? pf.businessName : '';
+        })
+        .filter(Boolean)
+        .join(' ');
+
+      const searchStr = `${p.pdpCode} ${p.address || ''} ${p.city || ''} ${p.province || ''} ${p.street || ''} ${clientNames}`.toLowerCase();
+      return searchStr.includes(searchTerm.toLowerCase());
+    });
+  }, [data, contracts, portfolios, searchTerm]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex justify-between items-center">
-        <div><h2 className="text-3xl font-black text-emerald-900">Punti Di Prelievo 1335</h2><p className="text-slate-500 font-medium italic">Database tecnico utenze</p></div>
-        <div className="flex gap-3">
-          <button onClick={() => exportFn(data, 'PDP')} className="p-3 text-slate-400 hover:text-slate-800 transition-colors"><FileSpreadsheet /></button>
-          <button onClick={() => { setForm({}); setEditingId(null); setIsFormOpen(true); }} className="bg-yellow-500 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:scale-105 transition-all"><Plus size={20}/> Nuovo PDP</button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-black text-emerald-900">Punti Di Prelievo</h2>
+          <p className="text-slate-500 font-medium italic">Database tecnico utenze</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Campo di ricerca */}
+          <div className="relative flex-1 md:flex-none md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input 
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 font-bold text-sm bg-white" 
+              placeholder="Cerca POD, indirizzo, cliente..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button onClick={() => exportFn(filteredPdps, 'PDP')} className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-slate-800 transition-colors shadow-sm" title="Esporta"><FileSpreadsheet size={20} /></button>
+          <button onClick={() => { setForm({}); setEditingId(null); setIsFormOpen(true); }} className="bg-yellow-500 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:scale-105 transition-all text-sm"><Plus size={18}/> Nuovo PDP</button>
         </div>
       </div>
       {isFormOpen && (
@@ -2246,16 +2371,16 @@ const PDPView: React.FC<any> = ({ data, setData, cabine, setCabine, contracts, p
             <tr><th className="p-6 text-[10px] font-black uppercase text-slate-400">Codice</th><th className="p-6 text-[10px] font-black uppercase text-slate-400">Località (Maps)</th><th className="p-6 text-[10px] font-black uppercase text-slate-400">Pot Imp/Disp</th><th className="p-6 text-[10px] font-black uppercase text-slate-400">Utente (Codice)</th><th className="p-6"></th></tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {data.map((p: PDP) => {
+            {filteredPdps.map((p: PDP) => {
               const lastContract = [...contracts].filter(c => c.pdpId === p.id).sort((a,b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0];
               const portfolio = lastContract ? portfolios.find(pf => pf.id === lastContract.portfolioId) : null;
               const assignedUser = portfolio ? users.find(u => u.id === portfolio.assignedTo) : null;
               
               return (
-                <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
-                  <td className="p-6 font-mono font-black">{p.pdpCode}</td>
+                <tr key={p.id} onClick={() => onViewPdp && onViewPdp(p)} className="hover:bg-emerald-50/20 transition-colors group cursor-pointer">
+                  <td className="p-6 font-mono font-black text-emerald-800">{p.pdpCode}</td>
                   <td className="p-6 text-sm font-bold">
-                     <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                        <AddressLink address={p.address} showIconOnly className="text-blue-500" />
                        <div>
                          <p className="font-bold text-slate-800">{p.city || '---'} ({p.province || '--'})</p>
@@ -2268,24 +2393,43 @@ const PDPView: React.FC<any> = ({ data, setData, cabine, setCabine, contracts, p
                     <p className="text-lg font-black text-emerald-700 leading-none">{assignedUser?.userCode || '---'}</p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{assignedUser?.name || '---'}</p>
                   </td>
-                  <td className="p-6 text-right space-x-2">
-                    <button onClick={() => { setForm(p); setEditingId(p.id); setIsFormOpen(true); }} className="text-slate-400 hover:text-blue-600 p-2"><Edit2 size={16}/></button>
-                    <button onClick={() => setData(data.filter((i:any) => i.id !== p.id))} className="text-slate-400 hover:text-red-600 p-2"><X size={18}/></button>
+                  <td className="p-6 text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => onViewPdp && onViewPdp(p)} className="text-slate-400 hover:text-emerald-600 p-2" title="Visualizza Scheda"><Eye size={16}/></button>
+                    <button onClick={() => { setForm(p); setEditingId(p.id); setIsFormOpen(true); }} className="text-slate-400 hover:text-blue-600 p-2" title="Modifica"><Edit2 size={16}/></button>
+                    <button onClick={() => setDeleteConfirmId(p.id)} className="text-slate-400 hover:text-red-600 p-2" title="Elimina"><X size={18}/></button>
                   </td>
                 </tr>
               );
             })}
+            {filteredPdps.length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-12 text-center text-slate-400 font-bold uppercase tracking-wider">
+                  Nessun PDP trovato corrispondente alla ricerca
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="Conferma Eliminazione"
+        message="Sei sicuro di voler eliminare questo punto di prelievo (PDP)? Questa operazione non può essere annullata."
+        onConfirm={() => {
+          setData((prev: PDP[]) => prev.filter(i => i.id !== deleteConfirmId));
+          setDeleteConfirmId(null);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };
 
-const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios, pdps, cabine, setCabine, setPdps, users, user, exportFn, onOpenChat, getUnreadCount, prefilledPortfolioId, onClearPrefill }) => {
+const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios, pdps, cabine, setCabine, setPdps, users, user, exportFn, onOpenChat, getUnreadCount, prefilledPortfolioId, onClearPrefill, onViewPdp }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
   const [selectedPDP, setSelectedPDP] = useState<PDP | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<Contract & PDP>>({ 
     status: 'bozza', 
     service: 'POWER', 
@@ -2300,6 +2444,25 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  const getDayBefore = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    date.setUTCDate(date.getUTCDate() - 1);
+    return date.toISOString().split('T')[0];
+  };
+
+  const mostRecentContractForSelectedPdp = useMemo(() => {
+    if (!form.pdpId || form.pdpId.startsWith('NEW_')) return null;
+    const pdpContracts = data.filter((c: any) => c.pdpId === form.pdpId && c.id !== editingId);
+    if (pdpContracts.length === 0) return null;
+    return pdpContracts.sort((a, b) => {
+      const dateA = a.endDate || '';
+      const dateB = b.endDate || '';
+      return dateB.localeCompare(dateA);
+    })[0];
+  }, [form.pdpId, data, editingId]);
 
   useEffect(() => {
     if (prefilledPortfolioId) {
@@ -2343,20 +2506,20 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
     
     // Validazione PDP
     if (form.contractType === 'ALLACCIO') {
-      // Per ALLACCIO può essere "da assegnare" o 13 caratteri
+      // Per ALLACCIO può essere "da assegnare" o 14 caratteri
       const code = form.pdpId.startsWith('NEW_') ? form.pdpId.replace('NEW_', '') : form.pdpId;
-      if (code.toLowerCase() !== 'da assegnare' && code.length !== 13) {
-        return alert("Per i nuovi allacci il codice PDP deve essere 'da assegnare' o di 13 caratteri.");
+      if (code.toLowerCase() !== 'da assegnare' && code.length !== 14) {
+        return alert("Per i nuovi allacci il codice PDP deve essere 'da assegnare' o di 14 caratteri.");
       }
     } else {
-      // Per gli altri casi deve essere 13 caratteri
+      // Per gli altri casi deve essere 14 caratteri
       const code = form.pdpId.startsWith('NEW_') ? form.pdpId.replace('NEW_', '') : form.pdpId;
       // Se è un PDP esistente, cerchiamo il codice reale
       const existingPdp = pdps.find((p:any) => p.id === form.pdpId);
       const finalCode = existingPdp ? existingPdp.pdpCode : code;
       
-      if (finalCode.length !== 13) {
-        return alert("Il codice PDP deve essere obbligatoriamente di 13 caratteri.");
+      if (finalCode.length !== 14) {
+        return alert("Il codice PDP deve essere obbligatoriamente di 14 caratteri.");
       }
     }
 
@@ -2380,8 +2543,37 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
     }
 
     const payload = { ...form, pdpId: finalPdpId, updatedAt: ts };
-    if (editingId) setData((prev: Contract[]) => prev.map(c => c.id === editingId ? { ...c, ...payload } : c));
-    else setData((prev: Contract[]) => [...prev, { ...payload, id: Math.random().toString(36).substr(2, 9), assignedTo: user.id, createdAt: ts } as Contract]);
+
+    const adjustPreviousContracts = (contractsList: Contract[]) => {
+      if (payload.status !== 'trasmesso' && payload.status !== 'attivo') return contractsList;
+      if (!payload.startDate || !payload.pdpId) return contractsList;
+      return contractsList.map(c => {
+        if (c.pdpId === payload.pdpId && c.id !== editingId) {
+          if (c.endDate && payload.startDate < c.endDate) {
+            const newEndDate = getDayBefore(payload.startDate);
+            return {
+              ...c,
+              endDate: newEndDate,
+              updatedAt: ts
+            };
+          }
+        }
+        return c;
+      });
+    };
+
+    if (editingId) {
+      setData((prev: Contract[]) => {
+        const updated = prev.map(c => c.id === editingId ? { ...c, ...payload } : c);
+        return adjustPreviousContracts(updated);
+      });
+    } else {
+      setData((prev: Contract[]) => {
+        const newContract = { ...payload, id: Math.random().toString(36).substr(2, 9), assignedTo: user.id, createdAt: ts } as Contract;
+        const updated = [...prev, newContract];
+        return adjustPreviousContracts(updated);
+      });
+    }
     
     setIsFormOpen(false); setEditingId(null); 
     const today = new Date().toISOString().split('T')[0];
@@ -2447,7 +2639,17 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
         </div>
       </div>
       {isFormOpen && (
-        <form onSubmit={handleSave} className="bg-white p-10 rounded-[3rem] border-2 border-emerald-50 shadow-2xl space-y-8 animate-in slide-in-from-top-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden my-8 animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-2xl font-black tracking-tight text-slate-800">
+                {editingId ? 'Modifica Contratto' : 'Nuovo Contratto'}
+              </h3>
+              <button type="button" onClick={() => setIsFormOpen(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-all">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 md:p-8 space-y-8 overflow-y-auto flex-1 text-left">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <SearchableSelect label="Cliente *" placeholder="Scegli cliente..." options={portfolios} selectedId={form.portfolioId} onSelect={(id:string) => setForm({...form, portfolioId: id})} displayFn={(p:any)=>p.businessName} searchFn={(p:any)=>`${p.businessName}`} subTextFn={(p:any)=>p.taxId} icon={<Users size={14}/>} />
             <SearchableSelect 
@@ -2469,6 +2671,24 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
               disabled={form.contractType === 'ALLACCIO'}
               maxLength={14}
             />
+            
+            {mostRecentContractForSelectedPdp && (
+              <div className="col-span-full bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
+                  <Clock size={16} className="text-amber-600 animate-pulse" />
+                  <span>Info Contratto Precedente:</span>
+                </div>
+                <div className="text-xs text-amber-700 font-semibold space-y-1 pl-6">
+                  <p>Il contratto più recente su questo PDP scade il: <strong className="text-sm font-black text-amber-900">{formatDate(mostRecentContractForSelectedPdp.endDate)}</strong>.</p>
+                  {form.startDate && mostRecentContractForSelectedPdp.endDate && form.startDate < mostRecentContractForSelectedPdp.endDate && (
+                    <p className="text-red-700 bg-red-50 border border-red-100 p-2.5 rounded-xl font-bold flex items-center gap-1.5 mt-1">
+                      <AlertCircle size={14} className="shrink-0" />
+                      Attenzione: la data di decorrenza inserita ({formatDate(form.startDate)}) è precedente alla scadenza del contratto precedente. Al salvataggio, la scadenza del precedente contratto sarà modificata automaticamente al <strong className="font-black underline">{formatDate(getDayBefore(form.startDate))}</strong>.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
             
             <div className="col-span-full space-y-4 p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
               <div className="flex gap-4 items-end">
@@ -2518,26 +2738,51 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">{formatVolume(form.volume || 0)}</span>
                   </div>
                 </div>
-                {form.service === 'POWER' && (
+                {form.service === 'POWER' ? (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Pot. Impegnata</label><input type="number" step="0.1" className="w-full border-2 p-3.5 rounded-2xl bg-white outline-none font-bold" value={form.potenzaImpegnata || ''} onChange={e => setForm({...form, potenzaImpegnata: Number(e.target.value)})} /></div>
                       <div className="space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Pot. Disponibile</label><input type="number" step="0.1" className="w-full border-2 p-3.5 rounded-2xl bg-white outline-none font-bold" value={form.potenzaDisponibile || ''} onChange={e => setForm({...form, potenzaDisponibile: Number(e.target.value)})} /></div>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase ml-1">Opz. Tar.</label>
-                      <select 
-                        className="w-full border-2 p-3.5 rounded-2xl bg-white font-bold outline-none border-slate-100" 
-                        value={form.tariffOption || ''} 
-                        onChange={e => setForm({...form, tariffOption: e.target.value})}
-                      >
-                        <option value="">Seleziona opzione...</option>
-                        {['DOM2', 'DOM3', 'BTA', 'MTA', 'BTIP', 'BTVE', 'MTIP', 'MTVE'].map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Opz. Tar.</label>
+                        <select 
+                          className="w-full border-2 p-3.5 rounded-2xl bg-white font-bold outline-none border-slate-100" 
+                          value={form.tariffOption || ''} 
+                          onChange={e => setForm({...form, tariffOption: e.target.value})}
+                        >
+                          <option value="">Seleziona opzione...</option>
+                          {['DOM2', 'DOM3', 'BTA', 'MTA', 'BTIP', 'BTVE', 'MTIP', 'MTVE'].map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Stato</label>
+                        <select className="w-full border-2 p-3.5 rounded-2xl bg-slate-50 font-bold outline-none" value={form.status} onChange={e => setForm({...form, status: e.target.value as any})}>
+                          <option value="bozza">Bozza</option>
+                          <option value="da firmare">Da Firmare</option>
+                          <option value="trasmesso">Trasmesso</option>
+                          <option value="attivo">Attivo</option>
+                          <option value="non conforme">Non Conforme</option>
+                          <option value="KO">KO</option>
+                        </select>
+                      </div>
                     </div>
                   </>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Stato</label>
+                    <select className="w-full border-2 p-3.5 rounded-2xl bg-slate-50 font-bold outline-none" value={form.status} onChange={e => setForm({...form, status: e.target.value as any})}>
+                      <option value="bozza">Bozza</option>
+                      <option value="da firmare">Da Firmare</option>
+                      <option value="trasmesso">Trasmesso</option>
+                      <option value="attivo">Attivo</option>
+                      <option value="non conforme">Non Conforme</option>
+                      <option value="KO">KO</option>
+                    </select>
+                  </div>
                 )}
                 <div className="col-span-full"><label className="text-xs font-bold text-slate-500 uppercase ml-1 text-emerald-600">Cabina Primaria</label><input disabled={form.service === 'METANO'} className="w-full border-2 p-3.5 rounded-2xl bg-white outline-none disabled:opacity-20 border-emerald-100" placeholder={form.service === 'POWER' ? "CP ..." : "N/A per Metano"} value={form.technicalSpecs || ''} onChange={e => setForm({...form, technicalSpecs: e.target.value})} /></div>
               </div>
@@ -2552,18 +2797,19 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
               <div className="space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Data Creazione</label><input type="date" disabled={user.role === 'utente'} className="w-full border-2 p-3.5 rounded-2xl bg-slate-50 outline-none font-bold disabled:opacity-50 text-xs" value={form.creationDate || ''} onChange={e => { const d = e.target.value; const start = calculateActivationDate(d); setForm({...form, creationDate: d, startDate: start, endDate: calculateEndDate(start, form.durationMonths || 12)}); }} /></div>
               <div className="space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Data Attivazione</label><input type="date" className="w-full border-2 p-3.5 rounded-2xl bg-slate-50 outline-none font-bold text-xs" value={form.startDate || ''} onChange={e => { const d = e.target.value; setForm({...form, startDate: d, endDate: calculateEndDate(d, form.durationMonths || 12)}); }} /></div>
             </div>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Durata (Mesi)</label><input type="number" className="w-full border-2 p-3.5 rounded-2xl bg-slate-50 outline-none font-bold text-xs" value={form.durationMonths || 12} onChange={e => { const m = Number(e.target.value); setForm({...form, durationMonths: m, endDate: calculateEndDate(form.startDate || '', m)}); }} /></div>
               <div className="space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Fine Contratto</label><input type="date" disabled className="w-full border-2 p-3.5 rounded-2xl bg-slate-200 outline-none font-bold opacity-70 text-xs" value={form.endDate || ''} /></div>
-              <div className="col-span-2 space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Tariffa</label><input className="w-full border-2 p-3.5 rounded-2xl bg-slate-50 outline-none font-bold text-xs" value={form.tariffa || ''} onChange={e => setForm({...form, tariffa: e.target.value})} /></div>
+              <div className="space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Tariffa</label><input className="w-full border-2 p-3.5 rounded-2xl bg-slate-50 outline-none font-bold text-xs" value={form.tariffa || ''} onChange={e => setForm({...form, tariffa: e.target.value})} /></div>
             </div>
             <div className="col-span-full"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Allegati Contratto</label>
               <FileUploader attachments={form.attachments || []} canEdit={true} onUpload={files => setForm({...form, attachments: [...(form.attachments || []), ...files]})} onRemove={id => setForm({...form, attachments: form.attachments?.filter(a => a.id !== id)})} />
             </div>
-            <div className="space-y-1.5"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Stato</label><select className="w-full border-2 p-3.5 rounded-2xl bg-slate-50 font-bold outline-none" value={form.status} onChange={e => setForm({...form, status: e.target.value as any})}><option value="bozza">Bozza</option><option value="da firmare">Da Firmare</option><option value="trasmesso">Trasmesso</option><option value="attivo">Attivo</option><option value="non conforme">Non Conforme</option><option value="KO">KO</option></select></div>
           </div>
           <div className="flex justify-end gap-4 border-t pt-8"><button type="button" onClick={() => setIsFormOpen(false)} className="font-bold text-slate-400">Annulla</button><button type="submit" className="bg-emerald-900 text-white px-12 py-5 rounded-2xl font-black shadow-xl">Salva Contratto</button></div>
         </form>
+          </div>
+        </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {filteredData.map((c: Contract) => {
@@ -2587,7 +2833,7 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
                        <p className="text-[10px] font-black uppercase text-slate-400 truncate">Intestatario</p>
                        <h4 onClick={() => port && setSelectedPortfolio(port)} className="text-xl font-black tracking-tight text-emerald-950 truncate cursor-pointer hover:text-emerald-600 transition-colors">{port?.businessName || 'Anagrafica N/D'}</h4>
                        <div className="flex items-center gap-2 mt-1">
-                          <p onClick={() => pdp && setSelectedPDP(pdp)} className="text-[11px] font-black text-emerald-600 font-mono bg-emerald-50 px-2 py-0.5 rounded-md cursor-pointer hover:bg-emerald-100 transition-colors">{pdp?.pdpCode || 'CODICE PDP N/D'}</p>
+                          <p onClick={() => pdp && onViewPdp && onViewPdp(pdp)} className="text-[11px] font-black text-emerald-600 font-mono bg-emerald-50 px-2 py-0.5 rounded-md cursor-pointer hover:bg-emerald-100 transition-colors">{pdp?.pdpCode || 'CODICE PDP N/D'}</p>
                           <p className="text-[10px] font-bold text-slate-400">| {c.fornitore} {c.tariffOption || c.tariffa ? `- ${c.tariffOption || c.tariffa}` : ''}</p>
                        </div>
                      </div>
@@ -2601,8 +2847,8 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
                                 <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
                               )}
                            </button>
-                           <button onClick={() => { setForm(c); setEditingId(c.id); setIsFormOpen(true); }} className="p-2 text-slate-300 hover:text-emerald-500"><Edit2 size={16}/></button>
-                           <button onClick={() => setData(data.filter(i=>i.id !== c.id))} className="p-2 text-slate-300 hover:text-red-500"><X size={18}/></button>
+                            <button onClick={() => { setForm(c); setEditingId(c.id); setIsFormOpen(true); }} className="p-2 text-slate-300 hover:text-emerald-500"><Edit2 size={16}/></button>
+                            <button onClick={() => setDeleteConfirmId(c.id)} className="p-2 text-slate-300 hover:text-red-500"><X size={18}/></button>
                         </div>
                      </div>
                    </div>
@@ -2640,6 +2886,17 @@ const ContractView: React.FC<any> = ({ data, setData, portfolios, setPortfolios,
           user={user}
         />
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="Conferma Eliminazione"
+        message="Sei sicuro di voler eliminare questo contratto? Questa operazione non può essere annullata."
+        onConfirm={() => {
+          setData((prev: Contract[]) => prev.filter(i => i.id !== deleteConfirmId));
+          setDeleteConfirmId(null);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };
@@ -2669,10 +2926,11 @@ const CabineView: React.FC<any> = ({ data, pdps, contracts, exportFn }) => (
   </div>
 );
 
-const CasiView: React.FC<any> = ({ data, setData, portfolios, pdps, user, exportFn, onOpenChat, getUnreadCount }) => {
+const CasiView: React.FC<any> = ({ data, setData, portfolios, pdps, user, exportFn, onOpenChat, getUnreadCount, onViewPdp }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<Partial<Caso>>({ status: 'nuovo', attachments: [] });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const availablePdps = useMemo(() => {
     if (!form.portfolioId) return pdps;
@@ -2713,6 +2971,7 @@ const CasiView: React.FC<any> = ({ data, setData, portfolios, pdps, user, export
       )}
       <div className="space-y-4">{data.map((c: Caso) => {
         const port = portfolios.find(p => p.id === c.portfolioId);
+        const pdp = pdps.find((p: any) => p.id === c.pdpId);
         return (
         <div key={c.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all flex items-center justify-between group">
            <div className="flex items-center gap-6 flex-1">
@@ -2720,7 +2979,14 @@ const CasiView: React.FC<any> = ({ data, setData, portfolios, pdps, user, export
              <div className="overflow-hidden">
                <p className="text-[10px] font-black uppercase text-slate-400 truncate">{port?.businessName || 'Senza Cliente'}</p>
                <h4 className="text-lg font-black tracking-tight text-slate-800 truncate">{c.title}</h4>
-               {c.notes && <p className="text-[10px] text-slate-400 truncate italic">"{c.notes}"</p>}
+               <div className="flex items-center gap-2 mt-1">
+                 {pdp && (
+                   <span onClick={(e) => { e.stopPropagation(); onViewPdp && onViewPdp(pdp); }} className="text-[10px] font-black text-emerald-600 font-mono bg-emerald-50 px-2 py-0.5 rounded cursor-pointer hover:bg-emerald-100 transition-colors">
+                     {pdp.pdpCode}
+                   </span>
+                 )}
+                 {c.notes && <span className="text-[10px] text-slate-400 truncate italic">"{c.notes}"</span>}
+               </div>
              </div>
            </div>
            <div className="flex items-center gap-8 shrink-0">
@@ -2739,11 +3005,21 @@ const CasiView: React.FC<any> = ({ data, setData, portfolios, pdps, user, export
                   )}
                 </button>
                 <button onClick={() => { setForm(c); setEditingId(c.id); setIsFormOpen(true); }} className="p-3 text-slate-300 hover:text-emerald-500"><Edit2 size={16}/></button>
-                <button onClick={() => setData(data.filter(i=>i.id !== c.id))} className="p-3 text-slate-300 hover:text-red-400"><X size={18}/></button>
+                <button onClick={() => setDeleteConfirmId(c.id)} className="p-3 text-slate-300 hover:text-red-400"><X size={18}/></button>
              </div>
            </div>
         </div>)})}
       </div>
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="Conferma Eliminazione"
+        message="Sei sicuro di voler eliminare questo caso di supporto? Questa operazione non può essere annullata."
+        onConfirm={() => {
+          setData((prev: Caso[]) => prev.filter(i => i.id !== deleteConfirmId));
+          setDeleteConfirmId(null);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };
@@ -2751,6 +3027,7 @@ const CasiView: React.FC<any> = ({ data, setData, portfolios, pdps, user, export
 const UsersView: React.FC<any> = ({ users, setUsers }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<User>>({ role: 'utente' });
 
   const handleSave = (e: React.FormEvent) => {
@@ -2797,10 +3074,20 @@ const UsersView: React.FC<any> = ({ users, setUsers }) => {
             </div>
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                 <button onClick={() => startEdit(u)} className="text-slate-400 hover:text-emerald-500 p-1"><Edit2 size={16}/></button>
-                <button onClick={() => setUsers(users.filter(x=>x.id !== u.id))} className="text-slate-400 hover:text-red-500 p-1"><Trash2 size={16}/></button>
+                <button onClick={() => setDeleteConfirmId(u.id)} className="text-slate-400 hover:text-red-500 p-1"><Trash2 size={16}/></button>
             </div>
          </div>))}
        </div>
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="Conferma Eliminazione"
+        message="Sei sicuro di voler eliminare questo profilo utente? Questa operazione non può essere annullata."
+        onConfirm={() => {
+          setUsers((prev: User[]) => prev.filter(x => x.id !== deleteConfirmId));
+          setDeleteConfirmId(null);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };
@@ -2900,7 +3187,7 @@ const PortfolioModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-emerald-50/50">
           <div>
@@ -3094,7 +3381,7 @@ const PDPModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-yellow-50/50">
           <div>
@@ -3158,6 +3445,255 @@ const PDPModal: React.FC<{
   );
 };
 
+const PDPDetailModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  pdp: PDP;
+  contracts: Contract[];
+  portfolios: Portfolio[];
+  casi: Caso[];
+  cabine: CabinaPrimaria[];
+}> = ({ isOpen, onClose, pdp, contracts, portfolios, casi, cabine }) => {
+  if (!isOpen || !pdp) return null;
+
+  // i casi mettili in ordine di stato dando priorità ai casi aperti
+  const statusWeight: Record<string, number> = {
+    'nuovo': 1,
+    'in lavorazione': 2,
+    'partner': 3,
+    'KO': 4,
+    'risolto': 5
+  };
+
+  const associatedContracts = contracts
+    .filter((c: any) => c.pdpId === pdp.id)
+    .sort((a, b) => {
+      // nel popup i contratti mettili in ordine di data di creazione (most recent first)
+      const dateA = a.createdAt || a.updatedAt || '';
+      const dateB = b.createdAt || b.updatedAt || '';
+      return dateB.localeCompare(dateA);
+    });
+
+  const associatedCases = casi
+    .filter((c: any) => c.pdpId === pdp.id)
+    .sort((a, b) => {
+      const weightA = statusWeight[a.status] || 99;
+      const weightB = statusWeight[b.status] || 99;
+      if (weightA !== weightB) {
+        return weightA - weightB;
+      }
+      // if same status, sort by date descending (most recent first)
+      const dateA = a.createdAt || a.updatedAt || '';
+      const dateB = b.createdAt || b.updatedAt || '';
+      return dateB.localeCompare(dateA);
+    });
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="p-8 bg-emerald-900 text-white relative flex-shrink-0">
+          <button 
+            onClick={onClose} 
+            className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-full transition-colors"
+          >
+            <X size={24} />
+          </button>
+          <h3 className="text-2xl font-black tracking-tight flex items-center gap-2">
+            <Zap className="text-yellow-400" size={24} /> Scheda Tecnica Punto di Prelievo
+          </h3>
+          <p className="text-emerald-300 text-xs font-bold uppercase tracking-widest mt-1">
+            Codice PDP: <span className="font-mono font-black text-white bg-emerald-800/80 px-2 py-0.5 rounded ml-1 text-sm">{pdp.pdpCode}</span>
+          </p>
+        </div>
+
+        {/* Body */}
+        <div className="p-8 overflow-y-auto space-y-8 flex-1">
+          {/* Sezione 1: Dati Anagrafici e Tecnici */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-black uppercase text-emerald-800 tracking-wider border-b pb-2 flex items-center gap-2">
+              <Info size={16} /> Dati Generali e Specifiche Tecniche
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Indirizzo Fornitura</p>
+                <div className="flex items-start gap-2 mt-1">
+                  <p className="font-bold text-slate-800 text-sm">{pdp.address || 'N/D'}</p>
+                  {pdp.address && (
+                    <AddressLink address={pdp.address} showIconOnly className="text-emerald-600 hover:text-emerald-800 mt-0.5" />
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Località</p>
+                <p className="font-bold text-slate-800 text-sm mt-1">
+                  {pdp.city || 'N/D'} {pdp.province ? `(${pdp.province})` : ''}
+                </p>
+                <p className="text-xs text-slate-500">{pdp.street || ''} {pdp.cap ? `CAP ${pdp.cap}` : ''}</p>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Cabina Primaria</p>
+                <p className="font-bold text-slate-800 text-sm mt-1">
+                  {pdp.cabinaPrimariaId 
+                    ? cabine.find((c: any) => c.id === pdp.cabinaPrimariaId)?.name || 'N/D' 
+                    : 'Nessuna cabina associata'}
+                </p>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Potenza Impegnata</p>
+                <p className="font-black text-emerald-700 text-lg mt-1">{pdp.potenzaImpegnata || 0} kW</p>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Potenza Disponibile</p>
+                <p className="font-black text-emerald-700 text-lg mt-1">{pdp.potenzaDisponibile || 0} kW</p>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Specifiche Tecniche</p>
+                <p className="font-medium text-slate-700 text-xs mt-1 italic whitespace-pre-line">
+                  {pdp.technicalSpecs || 'Nessuna specifica aggiuntiva.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sezione 2: Contratti Collegati */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-black uppercase text-emerald-800 tracking-wider border-b pb-2 flex items-center gap-2">
+              <FileText size={16} /> Contratti Collegati
+            </h4>
+            {associatedContracts.length === 0 ? (
+              <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl text-center">
+                <p className="text-sm text-slate-400 font-bold uppercase tracking-wider">Nessun contratto associato a questo PDP</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm overflow-x-auto">
+                <table className="w-full text-left min-w-[600px]">
+                  <thead className="bg-slate-50 border-b">
+                    <tr>
+                      <th className="p-4 text-[9px] font-black uppercase text-slate-400">N. Contratto</th>
+                      <th className="p-4 text-[9px] font-black uppercase text-slate-400">Cliente (Business)</th>
+                      <th className="p-4 text-[9px] font-black uppercase text-slate-400">Servizio / Fornitore</th>
+                      <th className="p-4 text-[9px] font-black uppercase text-slate-400">Validità</th>
+                      <th className="p-4 text-[9px] font-black uppercase text-slate-400">Stato</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {associatedContracts.map((c: any) => {
+                      const port = portfolios.find((pf: any) => pf.id === c.portfolioId);
+                      const statusColor = 
+                        c.status === 'attivo' ? 'bg-emerald-100 text-emerald-600' :
+                        c.status === 'trasmesso' ? 'bg-blue-100 text-blue-600' :
+                        c.status === 'bozza' ? 'bg-slate-100 text-slate-500' :
+                        c.status === 'da firmare' ? 'bg-amber-100 text-amber-600' :
+                        'bg-red-100 text-red-600';
+                      
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-4 font-bold text-xs">{c.contractNumber || '---'}</td>
+                          <td className="p-4">
+                            <p className="font-bold text-slate-800 text-xs">{port?.businessName || '---'}</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase">{port?.taxId}</p>
+                          </td>
+                          <td className="p-4 text-xs font-bold">
+                            <span className="flex items-center gap-1.5">
+                              {c.service === 'POWER' ? (
+                                <Lightbulb size={12} className="text-red-500" />
+                              ) : (
+                                <Flame size={12} className="text-blue-500" />
+                              )}
+                              {c.service} - <span className="text-emerald-700 font-black">{c.fornitore}</span>
+                            </span>
+                          </td>
+                          <td className="p-4 text-xs">
+                            <p className="font-bold text-slate-600">{formatDate(c.startDate)} al {formatDate(c.endDate)}</p>
+                            <p className="text-[9px] text-slate-400">{c.durationMonths} mesi</p>
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${statusColor}`}>
+                              {c.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Sezione 3: Ticket / Casi Collegati */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-black uppercase text-emerald-800 tracking-wider border-b pb-2 flex items-center gap-2">
+              <ShieldAlert size={16} /> Casi / Assistenza Collegati
+            </h4>
+            {associatedCases.length === 0 ? (
+              <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl text-center">
+                <p className="text-sm text-slate-400 font-bold uppercase tracking-wider">Nessun caso aperto associato a questo PDP</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm overflow-x-auto">
+                <table className="w-full text-left min-w-[600px]">
+                  <thead className="bg-slate-50 border-b">
+                    <tr>
+                      <th className="p-4 text-[9px] font-black uppercase text-slate-400">Categoria</th>
+                      <th className="p-4 text-[9px] font-black uppercase text-slate-400">Titolo / Descrizione</th>
+                      <th className="p-4 text-[9px] font-black uppercase text-slate-400">Stato</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {associatedCases.map((c: any) => {
+                      const caseStatusColor = 
+                        c.status === 'risolto' ? 'bg-emerald-100 text-emerald-600' :
+                        c.status === 'in lavorazione' ? 'bg-amber-100 text-amber-600' :
+                        c.status === 'nuovo' ? 'bg-blue-100 text-blue-600' :
+                        'bg-red-100 text-red-600';
+                      
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-4">
+                            <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase">
+                              {c.category}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <p className="font-bold text-slate-800 text-xs">{c.title}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{c.description}</p>
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${caseStatusColor}`}>
+                              {c.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0">
+          <button 
+            onClick={onClose} 
+            className="bg-emerald-900 hover:bg-emerald-800 text-white px-8 py-3 rounded-xl font-black text-sm transition-colors"
+          >
+            Chiudi
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CreditCheckModal: React.FC<{ isOpen: boolean, onClose: () => void, portfolio: Portfolio, onSave: (req: Partial<CreditCheckRequest>) => void }> = ({ isOpen, onClose, portfolio, onSave }) => {
   const [power, setPower] = useState('');
   const [methane, setMethane] = useState('');
@@ -3183,7 +3719,7 @@ const CreditCheckModal: React.FC<{ isOpen: boolean, onClose: () => void, portfol
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
@@ -3228,6 +3764,7 @@ const CreditCheckModal: React.FC<{ isOpen: boolean, onClose: () => void, portfol
 
 const CreditCheckView: React.FC<{ data: CreditCheckRequest[], setData: React.Dispatch<React.SetStateAction<CreditCheckRequest[]>>, portfolios: Portfolio[], users: User[], user: User, exportFn: any }> = ({ data, setData, portfolios, users, user, exportFn }) => {
   const isAdminOrBO = user.role === 'admin' || user.role === 'backoffice';
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const handleStatusChange = (id: string, supplier: keyof CreditCheckRequest['suppliers'], status: CreditCheckStatus) => {
     setData(prev => prev.map(s => s.id === id ? { ...s, suppliers: { ...s.suppliers, [supplier]: status }, updatedAt: getTimestamp() } : s));
@@ -3281,9 +3818,9 @@ const CreditCheckView: React.FC<{ data: CreditCheckRequest[], setData: React.Dis
               const agent = users.find(u => u.id === s.assignedTo);
               return (
                 <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="p-4 font-bold text-slate-800 text-xs">{portfolio?.businessName || 'N/D'}</td>
-                  <td className="p-4 font-mono text-xs">{s.powerVolume.toLocaleString()}</td>
-                  <td className="p-4 font-mono text-xs">{s.methaneVolume.toLocaleString()}</td>
+                  <td className="p-4 font-bold text-slate-800 text-[11px]">{portfolio?.businessName || 'N/D'}</td>
+                  <td className="p-4 font-mono text-[11px]">{s.powerVolume.toLocaleString()}</td>
+                  <td className="p-4 font-mono text-[11px]">{s.methaneVolume.toLocaleString()}</td>
                   {(['A2A1', 'AXPO', 'DOLO', 'SORG', 'OPEN'] as const).map(supplier => (
                     <td key={supplier} className="p-4">
                       {isAdminOrBO ? (
@@ -3310,7 +3847,7 @@ const CreditCheckView: React.FC<{ data: CreditCheckRequest[], setData: React.Dis
                     </td>
                   )}
                   <td className="p-4 text-right">
-                    <button onClick={() => setData(prev => prev.filter(item => item.id !== s.id))} className="text-slate-300 hover:text-red-500 transition-colors">
+                    <button onClick={() => setDeleteConfirmId(s.id)} className="text-slate-300 hover:text-red-500 transition-colors">
                       <Trash2 size={16} />
                     </button>
                   </td>
@@ -3320,11 +3857,21 @@ const CreditCheckView: React.FC<{ data: CreditCheckRequest[], setData: React.Dis
           </tbody>
         </table>
       </div>
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="Conferma Eliminazione"
+        message="Sei sicuro di voler eliminare questa richiesta di Credit Check? Questa operazione non può essere annullata."
+        onConfirm={() => {
+          setData(prev => prev.filter(item => item.id !== deleteConfirmId));
+          setDeleteConfirmId(null);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };
 
-const MapView: React.FC<{ pdps: PDP[], portfolios: Portfolio[], contracts: Contract[] }> = ({ pdps, portfolios, contracts }) => {
+const MapView: React.FC<{ pdps: PDP[], portfolios: Portfolio[], contracts: Contract[], onViewPdp?: (p: PDP) => void }> = ({ pdps, portfolios, contracts, onViewPdp }) => {
   const [coords, setCoords] = useState<Record<string, [number, number]>>({});
 
   if (pdps.length === 0) {
@@ -3405,8 +3952,11 @@ const MapView: React.FC<{ pdps: PDP[], portfolios: Portfolio[], contracts: Contr
               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{p.pdpCode}</p>
               <p className="font-bold text-slate-800">{portfolio?.businessName || 'N/D'}</p>
               <p className="text-[10px] text-slate-500">{p.address}</p>
-              <div className="pt-2 border-t mt-2">
-                <AddressLink address={p.address} label="Apri in Google Maps" className="text-blue-600 text-[10px] font-bold" />
+              <div className="pt-2 border-t mt-2 flex justify-between items-center gap-4">
+                <AddressLink address={p.address} label="Google Maps" className="text-blue-600 text-[10px] font-bold shrink-0" />
+                <button onClick={() => onViewPdp && onViewPdp(p)} className="text-emerald-700 hover:text-emerald-900 text-[10px] font-black uppercase tracking-tight cursor-pointer shrink-0">
+                  Dettagli
+                </button>
               </div>
             </div>
           </Popup>
@@ -3459,7 +4009,7 @@ const MapView: React.FC<{ pdps: PDP[], portfolios: Portfolio[], contracts: Contr
           {markers}
         </MapContainer>
         
-        <div className="absolute bottom-6 left-6 z-[1000] bg-white/90 backdrop-blur p-4 rounded-2xl border border-slate-200 shadow-xl max-w-xs">
+        <div className="absolute bottom-6 left-6 z-[500] bg-white/90 backdrop-blur p-4 rounded-2xl border border-slate-200 shadow-xl max-w-xs">
           <p className="text-[10px] font-black uppercase text-slate-400 mb-2">Legenda</p>
           <div className="space-y-2">
             <div className="flex items-center gap-3">
