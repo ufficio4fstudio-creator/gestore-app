@@ -27,12 +27,41 @@ export interface User {
   notificationSettings?: NotificationSettings;
 }
 
+export interface Partner {
+  id: string;
+  username: string;
+  password?: string;
+  name: string;
+  role: 'utente';
+  userCode: string;
+  email: string;
+  phone?: string;
+  avatar?: string;
+  notificationSettings?: NotificationSettings;
+}
+
+export interface Appartenenza extends Timestamps {
+  id: string;
+  name: string; // Nome Marchio / Gruppo
+  description?: string;
+  assignedTo: string; // User ID
+}
+
+export interface Campagna extends Timestamps {
+  id: string;
+  code: string; // Max 4 alphanumeric characters
+  name: string;
+  description: string;
+  exclusiveBenefits: string; // Vantaggi esclusivi
+}
+
 export interface Attachment {
   id: string;
   fileName: string;
   fileSize: number;
   uploadDate: string;
   mimeType: string;
+  dataUrl?: string;
 }
 
 export interface Timestamps {
@@ -58,6 +87,8 @@ export interface Portfolio extends Timestamps {
   businessName: string;
   entityType: PortfolioEntityType;
   assignedTo: string; // User ID
+  partnerId?: string; // Partner ID
+  appartenenzaId?: string; // Appartenenza (Marchio / Gruppo) ID
   updatedBy?: string; // User ID or Name
   attachments: Attachment[];
 }
@@ -70,19 +101,25 @@ export interface CabinaPrimaria {
 export interface PDP extends Timestamps {
   id: string;
   pdpCode: string;
+  service?: 'POWER' | 'METANO';
   address: string;
   street: string;
   cap: string;
   city: string;
   province: string;
-  technicalSpecs: string;
+  matricola?: string;
+  cabinaPrimaria?: string;
   potenzaImpegnata: number;
   potenzaDisponibile: number;
+  tensione?: string;
   cabinaPrimariaId?: string;
+  technicalSpecs?: string;
+  remi?: string;
+  portata?: string;
   assignedTo: string;
 }
 
-export type ContractStatus = 'bozza' | 'da firmare' | 'trasmesso' | 'attivo' | 'non conforme' | 'KO';
+export type ContractStatus = 'bozza' | 'da firmare' | 'trasmesso' | 'attivo' | 'non conforme' | 'KO' | 'corretto';
 export type Fornitore = 'A2A1' | 'A2A2' | 'AXPO' | 'AXP2' | 'DOLO' | 'DUFE' | 'OPEN' | 'SORG';
 export type ContractType = 'SWITCH' | 'ATTIVAZIONE' | 'VOLT TIT III' | 'VOLT TIT IV' | 'ALLACCIO' | 'RINNOVO';
 
@@ -107,15 +144,29 @@ export interface Contract extends Timestamps {
   creationDate: string; // YYYY-MM-DD
   durationMonths: number;
   endDate: string; // YYYY-MM-DD
+  address?: string;
+  street?: string;
+  cap?: string;
+  city?: string;
+  province?: string;
+  matricola?: string;
+  cabinaPrimaria?: string;
+  technicalSpecs?: string;
+  tensione?: string;
+  remi?: string;
+  portata?: string;
+  campagnaId?: string;
 }
 
-export type CaseCategory = 'ANALISI' | 'ANAGRAFICA' | 'CONTENZIOSO' | 'CONTRATTUALE' | 'CREDITI' | 'DISTRIBUZIONE' | 'FATTURAZIONE';
+export type CaseCategory = 'Anagrafica' | 'Interni' | 'Mandati' | 'Contenzioso' | 'Commerciale' | 'Crediti' | 'Fatture' | 'Fiscale' | 'Distribuzione';
+export type CaseSector = 'Energetico' | 'Telefonico' | 'Efficienza' | 'CER' | 'TARI' | 'Acqua';
 export type CaseStatus = 'nuovo' | 'in lavorazione' | 'risolto' | 'KO' | 'partner';
 
 export interface Caso extends Timestamps {
   id: string;
   title: string;
-  category: CaseCategory;
+  category?: CaseCategory;
+  sector?: CaseSector;
   portfolioId: string;
   pdpId?: string;
   description: string;
@@ -175,6 +226,30 @@ export interface Associazione extends Timestamps {
   assignedTo: string;
   status: AssociazioneStatus;
   isRenewal: boolean;
+  incassato?: boolean;
+  campagnaId?: string;
 }
 
-export type AppView = 'portfolio' | 'pdp' | 'contracts' | 'dashboard' | 'cabine' | 'casi' | 'users' | 'statistics' | 'map' | 'bulk-upload' | 'credit-check' | 'profile' | 'news-admin' | 'tpm-ranking' | 'associazioni' | 'rinnovi';
+export type TelefonicoTipoOperazione = 'Cambio Gestore' | 'Nuovo contratto' | 'Voltura';
+export type TelefonicoGestore = 'FASTWEB' | 'TIM' | 'VERY' | 'VODAFONE' | 'WIND';
+
+export interface ContrattoTelefonico extends Timestamps {
+  id: string;
+  portfolioId: string;
+  tipoOperazione: TelefonicoTipoOperazione;
+  gestore: TelefonicoGestore;
+  address?: string;
+  street?: string;
+  cap?: string;
+  city?: string;
+  province?: string;
+  lineeFisse: number;
+  lineeMobili: number;
+  status: ContractStatus;
+  notes?: string;
+  attachments: Attachment[];
+  assignedTo: string;
+  campagnaId?: string;
+}
+
+export type AppView = 'portfolio' | 'pdp' | 'contracts' | 'telefonico' | 'dashboard' | 'cabine' | 'casi' | 'users' | 'partners' | 'appartenenze' | 'campagne' | 'statistics' | 'map' | 'bulk-upload' | 'credit-check' | 'profile' | 'news-admin' | 'tpm-ranking' | 'associazioni' | 'rinnovi';
